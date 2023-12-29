@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
-include(FetchContent)
+# add dependencies
+include(cmake/CPM.cmake)
+
 project(SyncSensation VERSION 1.0.0 LANGUAGES CXX)
 
 # Specify the C++ standard
@@ -20,11 +22,21 @@ if(BUILD_TESTS)
     add_subdirectory(tests)
 endif()
 
-FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz)
-FetchContent_MakeAvailable(json)
-
-FetchContent_Declare(boost URL https://boostorg.jfrog.io/artifactory/main/release/1.84.0/source/boost_1_84_0.tar.gz)
-FetchContent_MakeAvailable(boost)
+CPMAddPackage(
+  NAME nlohmann_json
+  VERSION 3.11.3
+  GITHUB_REPOSITORY nlohmann/json
+  OPTIONS
+    "JSON_BuildTests OFF"
+)
+# boost is a huge project and will take a while to download
+# using `CPM_SOURCE_CACHE` is strongly recommended
+CPMAddPackage(
+  NAME Boost
+  VERSION 1.84.0
+  GITHUB_REPOSITORY "boostorg/boost"
+  GIT_TAG "boost-1.84.0"
+)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 target_link_libraries(SyncSensation PRIVATE nlohmann_json::nlohmann_json)
