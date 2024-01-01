@@ -14,8 +14,6 @@ option(BUILD_TESTS "Build all tests." OFF) # Turn off by default
 include_directories(${PROJECT_SOURCE_DIR}/include)
 file(GLOB SOURCES "src/*.cpp" "src/domain/*.cpp")
 
-# add_subdirectory(src)
-
 # If testing is enabled, include the tests subdirectory
 if(BUILD_TESTS)
     enable_testing()
@@ -29,6 +27,13 @@ CPMAddPackage(
   OPTIONS
     "JSON_BuildTests OFF"
 )
+
+CPMAddPackage(
+  NAME imgui
+  VERSION 1.90
+  GITHUB_REPOSITORY ocornut/imgui
+)
+
 # boost is a huge project and will take a while to download
 # using `CPM_SOURCE_CACHE` is strongly recommended
 CPMAddPackage(
@@ -38,5 +43,5 @@ CPMAddPackage(
   GIT_TAG "boost-1.84.0"
 )
 
-add_executable(${PROJECT_NAME} ${SOURCES})
-target_link_libraries(SyncSensation PRIVATE nlohmann_json::nlohmann_json)
+add_executable(${CMAKE_PROJECT_NAME} ${SOURCES})
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE nlohmann_json::nlohmann_json)
