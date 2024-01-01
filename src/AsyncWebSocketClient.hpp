@@ -18,8 +18,9 @@ using json = nlohmann::json;
 class AsyncWebSocketClient : public std::enable_shared_from_this<AsyncWebSocketClient> {
     public:
     AsyncWebSocketClient(boost::asio::io_context& ioc, std::string host, std::string port, std::string target);
-    void start();
+    void start(std::function<void()> handshake_cb);
     void on_message(std::function<void(beast::multi_buffer&)> message_cb);
+    void write(const std::string &data);
 
     private:
     tcp::resolver resolver_;
@@ -30,8 +31,8 @@ class AsyncWebSocketClient : public std::enable_shared_from_this<AsyncWebSocketC
     beast::multi_buffer buffer_;
     std::function<void(beast::multi_buffer&)> message_cb_;
 
-    void do_connect(const tcp::resolver::results_type& endpoints);
-    void do_handshake();
+    void do_connect(const tcp::resolver::results_type &endpoints, std::function<void()> handshake_cb);
+    void do_handshake(std::function<void()> handshake_cb);
     void do_read();
 };
 

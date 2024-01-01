@@ -4,45 +4,49 @@ AsyncWebSocketClient::AsyncWebSocketClient(boost::asio::io_context &ioc, std::st
 {
 }
 
-void AsyncWebSocketClient::start()
+void AsyncWebSocketClient::start(std::function<void()> handshake_cb)
 {
     resolver_.async_resolve(
         host_, port_,
-        [self = shared_from_this()](boost::system::error_code ec, tcp::resolver::results_type results) {
+        [this, handshake_cb](boost::system::error_code ec, tcp::resolver::results_type results) {
             if (!ec) {
-                self->do_connect(results);
+                do_connect(results, handshake_cb);
             } else {
                 std::cerr << "Resolve failed: " << ec.message() << std::endl;
             }
     });
 }
 
-void AsyncWebSocketClient::on_message(std::function<void(beast::multi_buffer &)> func)
-{
-    message_cb_ = func;
-}
 
-void AsyncWebSocketClient::do_connect(const tcp::resolver::results_type &endpoints) {
+void AsyncWebSocketClient::do_connect(const tcp::resolver::results_type &endpoints, std::function<void()> handshake_cb) {
     boost::asio::async_connect(
         ws_.next_layer(), endpoints.begin(), endpoints.end(),
-        [this, self=shared_from_this()](boost::system::error_code ec, tcp::resolver::iterator) {
+        [this,handshake_cb](boost::system::error_code ec, tcp::resolver::iterator) {
             if (!ec) {
-                do_handshake();
+                do_handshake(handshake_cb);
             } else {
                 std::cerr << "Connect failed: " << ec.message() << std::endl;
             }
         });
 }
 
-void AsyncWebSocketClient::do_handshake() {
+
+void AsyncWebSocketClient::do_handshake(std::function<void()> handshake_cb) {
     ws_.async_handshake(host_, target_,
-        [this, self=shared_from_this()](boost::system::error_code ec) {
+        [this, handshake_cb](boost::system::error_code ec) {
             if (!ec) {
+                std::cout << "hand shake done" << std::endl;
+                handshake_cb();
                 do_read();
             } else {
                 std::cerr << "Handshake failed: " << ec.message() << std::endl;
             }
         });
+}
+
+void AsyncWebSocketClient::on_message(std::function<void(beast::multi_buffer &)> func)
+{
+    message_cb_ = func;
 }
 
 void AsyncWebSocketClient::do_read() {
@@ -67,3 +71,12 @@ void AsyncWebSocketClient::do_read() {
             }
         });
 }
+
+    void AsyncWebSocketClient::write(const std::string &data){
+        ws_.async_write(asio::buffer(data),
+        [this](boost::system::error_code ec, std::size_t){
+            if(ec){
+                std::cerr << "Write failed: " << ec.message() << std::endl;
+            }
+        });
+    }
