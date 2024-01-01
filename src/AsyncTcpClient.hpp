@@ -11,22 +11,26 @@ using boost::asio::ip::tcp;
 namespace asio=boost::asio;
 using json = nlohmann::json;
 
-class AsyncTcpClient {
+class AsyncTcpClient : public std::enable_shared_from_this<AsyncTcpClient> {
     public:
-    AsyncTcpClient(asio::io_context& io_ctx, const std::string& host, const std::string& port);
-    void read();
-    void write(const std::string &data);
+    AsyncTcpClient(asio::io_context& ioc, std::string host, std::string port);
+    void start();
 
     private:
-    asio::io_context& io_context_;
+    asio::ip::tcp::resolver resolver_;
+    std::string host_;
+    std::string port_;
+
     tcp::socket socket_;
     boost::array<char, 128> buffer_;
     std::string data_;
     asio::steady_timer ping_timer_;
 
-    void doWrite(const std::vector<char>& package);
+    void read();
+    void write(const std::string &data);
+    void do_write(const std::vector<char>& package);
     void ping();
-    void startPing();
+    void start_ping();
     void handle_disconnect();
 };
 

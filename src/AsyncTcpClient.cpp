@@ -1,18 +1,27 @@
 #include "AsyncTcpClient.hpp"
 
-AsyncTcpClient::AsyncTcpClient(asio::io_context& io_ctx, const std::string& host, const std::string& port):io_context_(io_ctx),socket_(io_context_), ping_timer_(io_context_){
-    tcp::resolver resolver(io_context_);
+AsyncTcpClient::AsyncTcpClient(asio::io_context& ioc, std::string host, std::string port):resolver_(ioc),socket_(ioc), ping_timer_(ioc),
+host_(std::move(host)), port_(std::move(port)){}
 
-    auto endpoints = resolver.resolve(host, port);
-    asio::async_connect(socket_, endpoints, [this](const boost::system::error_code& error, tcp::endpoint /*iterator*/){
-        if(!error) {
-            std::cout << "Connected!" << std::endl;
-            read();
-        } else {
-            std::cout << "Failed to connect! "<< error.message() << std::endl;
+void AsyncTcpClient::start(){
+    resolver_.async_resolve(
+        host_, port_,
+        [this](boost::system::error_code ec, tcp::resolver::results_type results) {
+            if (!ec) {
+                asio::async_connect(socket_, results,
+                    [this](const boost::system::error_code& error, tcp::endpoint /*iterator*/){
+                        if(!error) {
+                            read();
+                        } else {
+                            std::cout << "Failed to connect! "<< error.message() << std::endl;
+                        }
+                });
+                start_ping();
+            } else {
+                std::cerr << "Resolve failed: " << ec.message() << std::endl;
+            }
         }
-    });
-    startPing();
+    );
 };
 
 void AsyncTcpClient::read() {
@@ -30,12 +39,12 @@ void AsyncTcpClient::read() {
     });
 }
 
-void AsyncTcpClient::startPing(){
+void AsyncTcpClient::start_ping(){
     ping_timer_.expires_after(asio::chrono::seconds(1));
     ping_timer_.async_wait([this](boost::system::error_code error){
         if(!error){
             ping();
-            startPing();
+            start_ping();
         } else {
             std::cout << "Ping timer error: " << error.message() << std::endl;
         }
@@ -60,10 +69,10 @@ void AsyncTcpClient::write(const std::string& json_data) {
         std::memcpy(packet.data() + sizeof(data_length), json_data.data(), data_length);
     }
 
-    doWrite(packet);
+    do_write(packet);
 }
 
-void AsyncTcpClient::doWrite(const std::vector<char>& packet) {
+void AsyncTcpClient::do_write(const std::vector<char>& packet) {
     asio::async_write(socket_, asio::buffer(packet),
     [this](boost::system::error_code error, std::size_t /*length*/){
         if(!error){
